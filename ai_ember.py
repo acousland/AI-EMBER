@@ -5,6 +5,8 @@ from langchain.document_loaders.csv_loader import CSVLoader
 from langchain.document_loaders import TextLoader, DirectoryLoader
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
+from langchain.agents import AgentType
+from langchain.agents import load_tools, initialize_agent
 import openai
 import streamlit as st
 
@@ -13,17 +15,14 @@ if openai.api_key not in st.session_state:
   openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Open and read the 'header.md' file, and store its content in the 'body' variable.
-#with open('assets/copy/header.md', 'r') as f:
-#    body = f.read()
+with open('assets/copy/header.md', 'r') as f:
+    body = f.read()
 
-# Display header icon of robot Emu and Kangaroo
-#st.image('assets/header_icon.png', width=150)
+# Display header icon
+st.image('assets/images/Logo.png', width=150)
 
 # Render the content of 'body' as Markdown.
-#st.markdown(body, unsafe_allow_html=False, help=None)
-
-# Combine prompts to create the setup prompt.
-#setupPrompt = prompts.botDirectionsPrompt + prompts.enquiryLinesPrompt
+st.markdown(body, unsafe_allow_html=False, help=None)
 
 
 # 1. Vectorise the FAQ and customer data
@@ -107,7 +106,7 @@ initial_system_prompt = """You are going to play the role of a friendly small to
 welcomePrompt = "Hey :)"
 
 
-"""
+
 # Create a StreamHandler class to handle the streaming of new tokens to give the effect of typing when the LLM is responding
 class StreamHandler(BaseCallbackHandler):
   def __init__(self, container, initial_text=""):
@@ -152,7 +151,14 @@ if prompt := st.chat_input():
                          model = "gpt-3.5-turbo",
                          callbacks=[stream_handler])
         
+        tools = load_tools(["llm-math"], llm=llm)
+        
+        agent = initialize_agent(tools, 
+                                llm, 
+                                agent=AgentType.CHAT_ZERO_SHOT_REACT_DESCRIPTION,
+                                handle_parsing_errors=True,
+                                verbose = True)
+
         # Generate and display the assistant's response
-        response = llm(st.session_state.messages)
+        response = agent(st.session_state.messages)
         st.session_state.messages.append(ChatMessage(role="assistant", content=response.content))
-"""
